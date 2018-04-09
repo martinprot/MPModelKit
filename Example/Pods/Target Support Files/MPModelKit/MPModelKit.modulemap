@@ -1,0 +1,6 @@
+framework module MPModelKit {
+  umbrella header "MPModelKit-umbrella.h"
+
+  export *
+  module * { export * }
+}
