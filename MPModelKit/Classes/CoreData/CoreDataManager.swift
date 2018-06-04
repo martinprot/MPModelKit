@@ -102,7 +102,7 @@ class CoreDataManager {
 	/// Perform the given block in the main queue
 	///
 	/// - Parameter block: the block to be performed, with the main context in parameter
-	func doInMain(_ block: @escaping (NSManagedObjectContext) -> Void) {
+	func doInMain(_ block: (NSManagedObjectContext) -> Void) {
 		guard let context = mainQueueContext else {
 			print("Data manager not initialized")
 			return
@@ -116,7 +116,7 @@ class CoreDataManager {
 	///
 	/// - Parameter block: the block to be performed, with the main context in parameter
 	/// - Parameter save: true if the changes should be saved in privateContext
-	func doInMain(_ block: @escaping (NSManagedObjectContext) -> Void, thenSave save: Bool) {
+	func doInMain(_ block: (NSManagedObjectContext) -> Void, thenSave save: Bool) {
 		doInMain(block)
 		if save {
 			saveMainContext()
@@ -129,7 +129,7 @@ class CoreDataManager {
 	/// - Parameter block: the block to be performed, with the main context in parameter
 	/// - Parameter persist: true if the changes should be saved in private queue, and
 	/// on disk.
-	func doInMain(_ block: @escaping (NSManagedObjectContext) -> Void, thenPersist persist: Bool) {
+	func doInMain(_ block: (NSManagedObjectContext) -> Void, thenPersist persist: Bool) {
 		doInMain(block)
 		if persist {
 			saveMainContext()
