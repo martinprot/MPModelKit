@@ -41,6 +41,39 @@ final public class SetResponseMapper<A: Mappable> where A: Hashable {
 	}
 }
 
+/// Generic parser for arrays
+extension ArrayResponseMapper {
+	
+	/// Processes a json list by calling a mapper for each element. Returns a Set
+	/// of managed objects.
+	///
+	/// - Parameters:
+	///   - obj: the json list
+	///   - moc: managed object context
+	///   - mapper: the mapper that converts json dictionary into managed object.
+	///     A function of CoreDataResponseMapperProtocol
+	/// - Returns: a Set of managed objects
+	/// - Throws: throws an error if wrong json format or rethrow any subelement
+	///		mapping error
+	static public func process(obj: Any, objectContext moc: NSManagedObjectContext, mapper: ((Any, Int, NSManagedObjectContext) throws -> A)) throws -> [A] {
+		guard let json = obj as? [[String: Any]] else {
+			throw ResponseMapperError.invalid
+		}
+		var items = [A]()
+		for (offset, jsonItem) in json.enumerated() {
+			do {
+				let item = try mapper(jsonItem, offset, moc)
+				items.append(item)
+			}
+			catch {
+				print("Mapping failed for element \(A.self). \(error)")
+			}
+		}
+		return items
+	}
+	
+}
+
 
 /// Protocol to be implemented by concrete mappers
 public protocol CoreDataResponseMapperProtocol {
