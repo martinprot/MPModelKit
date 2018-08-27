@@ -20,6 +20,8 @@ open class FetchViewModel<E: NSFetchRequestResult> {
 		}
 	}
 	
+	public weak var fetchedResultsDelegate: NSFetchedResultsControllerDelegate?
+	
 	/// If the list should contain sections, the object keypath to sort with
 	open var sectionKeyPath: String? { return .none }
 	
@@ -28,6 +30,7 @@ open class FetchViewModel<E: NSFetchRequestResult> {
 		var resultController: NSFetchedResultsController<E>? = .none
 		CoreDataManager.dataStore.doInMain { moc in
 			resultController = NSFetchedResultsController<E>(fetchRequest: self.fetchRequest, managedObjectContext: moc, sectionNameKeyPath: self.sectionKeyPath, cacheName: .none)
+			resultController?.delegate = self.fetchedResultsDelegate
 			do {
 				try resultController?.performFetch()
 			}
@@ -42,7 +45,7 @@ open class FetchViewModel<E: NSFetchRequestResult> {
 	
 	
 	/// the result controller, lazy var that can be reset
-	public var fetchedResultsController: NSFetchedResultsController<E>? {
+	public private(set) var fetchedResultsController: NSFetchedResultsController<E>? {
 		get {
 			if _fetchedResultsController == nil {
 				_fetchedResultsController = resultControllerInitializer

@@ -13,13 +13,13 @@ enum ManagedObjectError: Error {
 	case wrongEntity
 }
 
-protocol Identifiable {
+public protocol Identifiable {
 	static var objectIdKeyPath: String { get }
 	
 	var objectId: Int64 { get set }
 }
 
-extension Identifiable {
+public extension Identifiable {
 	static var objectIdKeyPath: String {
 		return "objectId"
 	}
@@ -47,7 +47,7 @@ extension NSManagedObjectContext {
 	/// Just create a new empty object for the given type
 	///
 	/// - Returns: the new object
-	func newObject<E: NSManagedObject>() throws -> E {
+	public func newObject<E: NSManagedObject>() throws -> E {
 		if let object = NSEntityDescription.insertNewObject(forEntityName: String(describing: E.self), into: self) as? E {
 			return object
 		}
@@ -56,7 +56,7 @@ extension NSManagedObjectContext {
 		}
 	}
 	
-	func newOrExistingObject<E: NSManagedObject>(withValue value: Any, forKey key: String) throws -> E {
+	public func newOrExistingObject<E: NSManagedObject>(withValue value: Any, forKey key: String) throws -> E {
 		if let object: E = object(withValue: value, forKey: key) {
 			return object
 		}
@@ -67,7 +67,7 @@ extension NSManagedObjectContext {
 		}
 	}
 	
-	func object<E: NSManagedObject>(withValue value: Any, forKey key: String) -> E? {
+	public func object<E: NSManagedObject>(withValue value: Any, forKey key: String) -> E? {
 		let entityName = String(describing: E.self)
 		let request = NSFetchRequest<E>(entityName: entityName)
 		request.predicate = predicate(respecting: [key: value])
@@ -75,7 +75,7 @@ extension NSManagedObjectContext {
 		return objects?.first
 	}
 	
-	func allObjects<E: NSManagedObject>(sortOn sortKey: String? = .none, ascending: Bool = true) -> [E] {
+	public func allObjects<E: NSManagedObject>(sortOn sortKey: String? = .none, ascending: Bool = true) -> [E] {
 		let entityName = String(describing: E.self)
 		let request = NSFetchRequest<E>(entityName: entityName)
 		if let sortKey = sortKey {
@@ -84,7 +84,7 @@ extension NSManagedObjectContext {
 		return (try? fetch(request)) ?? []
 	}
 	
-	func allObjects<E: NSManagedObject>(respecting: [String: Any], sortOn sortKey: String? = .none, ascending: Bool = true) -> [E] {
+	public func allObjects<E: NSManagedObject>(respecting: [String: Any], sortOn sortKey: String? = .none, ascending: Bool = true) -> [E] {
 		let entityName = String(describing: E.self)
 		let request = NSFetchRequest<E>(entityName: entityName)
 		
@@ -96,7 +96,7 @@ extension NSManagedObjectContext {
 		return (try? fetch(request)) ?? []
 	}
 	
-	func removeAll<E: NSManagedObject>(entity: E.Type, respecting: [String: Any]? = .none) throws {
+	public func removeAll<E: NSManagedObject>(entity: E.Type, respecting: [String: Any]? = .none) throws {
 		let objects: [E]
 		if let toRespect = respecting {
 			objects = allObjects(respecting: toRespect)
@@ -111,7 +111,7 @@ extension NSManagedObjectContext {
 	// MARK: Identifiable
 	////////////////////////////////////////////////////////////////////////////
 	
-	func newOrExistingObject<E: NSManagedObject>(identifiedBy objectId: Int64) throws -> E where E: Identifiable {
+	public func newOrExistingObject<E: NSManagedObject>(identifiedBy objectId: Int64) throws -> E where E: Identifiable {
 		if let object: E = object(identifiedBy: objectId) {
 			return object
 		}
@@ -122,7 +122,7 @@ extension NSManagedObjectContext {
 		}
 	}
 	
-	func object<E: NSManagedObject>(identifiedBy objectId: Int64) -> E? where E: Identifiable {
+	public func object<E: NSManagedObject>(identifiedBy objectId: Int64) -> E? where E: Identifiable {
 		let entityName = String(describing: E.self)
 		let request = NSFetchRequest<E>(entityName: entityName)
 		request.predicate = predicate(respecting: [E.objectIdKeyPath: objectId])
@@ -136,7 +136,7 @@ extension NSManagedObjectContext {
 	/// Do the given instructions with the caller, on the main thread
 	///
 	/// - Parameter block: the instruction to do
-	func doSync(_ block: @escaping (NSManagedObjectContext) -> Void) {
+	public func doSync(_ block: @escaping (NSManagedObjectContext) -> Void) {
 		doSync(block, thenSave: false)
 	}
 	
@@ -144,7 +144,7 @@ extension NSManagedObjectContext {
 	///
 	/// - Parameter block: the instruction to do
 	/// - Parameter thenSave: true if the modifications should be saved
-	func doSync(_ block: @escaping (NSManagedObjectContext) -> Void, thenSave save: Bool) {
+	public func doSync(_ block: @escaping (NSManagedObjectContext) -> Void, thenSave save: Bool) {
 		self.performAndWait {
 			block(self)
 			if save && self.hasChanges {

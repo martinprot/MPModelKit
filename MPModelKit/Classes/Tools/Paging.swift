@@ -35,6 +35,10 @@ public struct Paging {
 	}
 	
 	public func next() -> Paging {
-		return Paging(page: page+1, limit: limit)
+		return Paging(page: page+1, limit: self.limit)
+	}
+	
+	public func first() -> Paging {
+		return Paging(page: Paging.firstPage, limit: self.limit)
 	}
 }

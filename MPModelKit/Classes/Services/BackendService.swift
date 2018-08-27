@@ -50,16 +50,19 @@ public class BackendService {
 		self.configuration = configuration
 	}
 	
-	public func request(request: BackendAPIRequest,
-	             success: ((Any) -> Void)? = nil,
+	public func fetch(request: BackendAPIRequest,
+	             success: @escaping (Any) -> Void,
 	             failure: (([String: Any]?, NetworkServiceError, Int) -> Void)? = nil) {
 		// Configure URL
 		let serviceURL: URL?
 		if request.endpoint.starts(with: "http") {
 			serviceURL = URL(string: request.endpoint)
 		}
+		else if let baseURL = configuration.baseURL {
+			serviceURL = baseURL.appendingPathComponent(request.endpoint)
+		}
 		else {
-			serviceURL = configuration.baseURL?.appendingPathComponent(request.endpoint)
+			serviceURL = URL(string: "http://" + request.endpoint)
 		}
 		guard let url = serviceURL
 			else {
@@ -123,7 +126,7 @@ public class BackendService {
 					return
 				}
 				DispatchQueue.main.async {
-					success?(returnedData)
+					success(returnedData)
 				}
 			// The request was asking a String object (such as HTML string)
 			case _ as BackendAPIHTMLRequest:
@@ -136,7 +139,7 @@ public class BackendService {
 						return
 				}
 				DispatchQueue.main.async {
-					success?(htmlString)
+					success(htmlString)
 				}
 			// The request was asking a [String: Any] object
 			case let objectRequest as BackendAPIObjectRequest:
@@ -158,12 +161,12 @@ public class BackendService {
 						return
 					}
 					DispatchQueue.main.async {
-						success?(objectDic)
+						success(objectDic)
 					}
 				}
 				else {
 					DispatchQueue.main.async {
-						success?(dic)
+						success(dic)
 					}
 				}
 			default:

@@ -17,6 +17,7 @@ public enum ResponseMapperError: Error {
 	case missingAttribute
 	case databaseError
 	case resourceNotFound
+	case notMappable
 }
 
 public protocol Mappable { }

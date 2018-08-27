@@ -10,7 +10,7 @@ import Foundation
 import CoreData
 
 /// Generic parser for arrays, adapted to core data
-final internal class SetResponseMapper<A: Mappable> where A: Hashable {
+final public class SetResponseMapper<A: Mappable> where A: Hashable {
 	
 	/// Processes a json list by calling a mapper for each element. Returns a Set
 	/// of managed objects.
@@ -23,7 +23,7 @@ final internal class SetResponseMapper<A: Mappable> where A: Hashable {
 	/// - Returns: a Set of managed objects
 	/// - Throws: throws an error if wrong json format or rethrow any subelement
 	///		mapping error
-	static func process(obj: Any, objectContext moc: NSManagedObjectContext, mapper: ((Any, Int, NSManagedObjectContext) throws -> A)) throws -> Set<A> {
+	static public func process(obj: Any, objectContext moc: NSManagedObjectContext, mapper: ((Any, Int, NSManagedObjectContext) throws -> A)) throws -> Set<A> {
 		guard let json = obj as? [[String: Any]] else {
 			throw ResponseMapperError.invalid
 		}
@@ -43,7 +43,7 @@ final internal class SetResponseMapper<A: Mappable> where A: Hashable {
 
 
 /// Protocol to be implemented by concrete mappers
-internal protocol CoreDataResponseMapperProtocol {
+public protocol CoreDataResponseMapperProtocol {
 	
 	associatedtype Item
 	
@@ -68,7 +68,7 @@ internal protocol CoreDataResponseMapperProtocol {
 	static func process(jsonObject: Any, offset: Int, objectContext moc: NSManagedObjectContext) throws -> Item
 }
 
-extension CoreDataResponseMapperProtocol {
+public extension CoreDataResponseMapperProtocol {
 	static func process(jsonObject: Any, offset: Int, objectContext moc: NSManagedObjectContext) throws -> Item {
 		return try process(jsonObject: jsonObject, objectContext: moc)
 	}

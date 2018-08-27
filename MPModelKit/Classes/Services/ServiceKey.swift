@@ -23,11 +23,11 @@ extension Dictionary {
 		let rawValue: RawValue
 	}
 	
-	public func key(_ key: ServiceKey) -> Value? {
+	public func key<Value>(_ key: ServiceKey) -> Value? {
 		let keys = key.keyName.components(separatedBy: ".")
 		if keys.count == 1 {
 			if let k = keys[0] as? Key {
-				return self[k]
+				return self[k] as? Value
 			}
 			else {
 				return .none
@@ -41,19 +41,19 @@ extension Dictionary {
 			}
 			let subkeys = keys.dropFirst().joined(separator: ".")
 			let serviceKey = TempServiceKey(rawValue: subkeys)
-			return subdic.key(serviceKey) as? Value
+			return subdic.key(serviceKey)
 		}
 		else {
 			return .none
 		}
 	}
-	public func key(_ firstKey: ServiceKey, fallback: ServiceKey) -> Value? {
+	public func key<Value>(_ firstKey: ServiceKey, fallback: ServiceKey) -> Value? {
 		return key(firstKey) ?? key(fallback)
 	}
 }
 
 extension DateFormatter {
-	static public func fsFormatter() -> DateFormatter {
+	static public var standardFormatter: DateFormatter {
 		let dateFormatter = DateFormatter()
 		dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
 		return dateFormatter

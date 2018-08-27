@@ -14,12 +14,10 @@ enum CoreDataError: Error {
 	case cannotCreateModel
 }
 
-class CoreDataManager {
-	struct Defaults {
-		static let dbPath = "database.sqlite"
-	}
+public class CoreDataManager {
+	static let dbPath = "database.sqlite"
 	
-	static let dataStore = CoreDataManager()
+	public static let dataStore = CoreDataManager()
 	
 	private var mainQueueContext: NSManagedObjectContext?
 	private var privateQueueContext: NSManagedObjectContext?
@@ -31,16 +29,17 @@ class CoreDataManager {
 	/// The core data stack is:
 	/// [Main queue context] -> [Global queue context] -> [PSC] -> [DataBase]
 	///
-	/// - Parameter then: the completion callback, or error callback if so
-	func setupDatabase(modelName: String, atPath path: String = Defaults.dbPath) throws {
+	/// - Parameter modelName: the xcdatamodeld file, without the ".xcdatamodeld")
+	/// - 			atPath: the local path of the database, from the Documents directory
+	public func setupDatabase(modelName: String, atPath path: String? = .none) throws {
 		let documentsPath = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)[0]
-		let dbURL = URL(fileURLWithPath: documentsPath.appendingFormat("/%@", path))
+		let dbURL = URL(fileURLWithPath: documentsPath.appendingFormat("/%@", path ?? CoreDataManager.dbPath))
 		print("[CoreDataManager] created database at", dbURL.path)
 		
 		if mainQueueContext != nil {
 			return
 		}
-		guard let url = Bundle(for: type(of: self)).url(forResource: modelName, withExtension: nil),
+		guard let url = Bundle.main.url(forResource: modelName, withExtension: "momd"),
 			  let managedObjectModel = NSManagedObjectModel(contentsOf: url)
 		else {
 			throw CoreDataError.cannotCreateModel
@@ -66,7 +65,7 @@ class CoreDataManager {
 	
 	/// Save private context on disk. Until this method is called, the db changes will not be saved on disk
 	/// /!\ does not saves main context! If main context has changes, call saveMainContext() before.
-	func saveOnDisk(then: (() -> ())? = .none) {
+	public func saveOnDisk(then: (() -> ())? = .none) {
 		guard let context = privateQueueContext,
 			context.hasChanges else {
 			then?()
@@ -84,7 +83,7 @@ class CoreDataManager {
 	}
 	
 	/// Saves the main context and propagates changes on private context
-	func saveMainContext() {
+	public func saveMainContext() {
 		guard let context = mainQueueContext,
 			context.hasChanges else {
 				return
@@ -111,13 +110,31 @@ class CoreDataManager {
 			block(context)
 		})
 	}
+		
+	/// Perform the given block in the main queue
+	///
+	/// - Parameter block: the block to be performed, with the main context in parameter
+	public func doInMain(_ block: (NSManagedObjectContext) throws -> Void) throws {
+		guard let context = mainQueueContext else {
+			print("Data manager not initialized")
+			return
+		}
+		var thrownError: Error?
+		context.performAndWait({
+			do { try block(context) }
+			catch { thrownError = error }
+		})
+		if let error = thrownError {
+			throw error
+		}
+	}
 	
 	/// Perform the given block in the main queue, then save changes into private context
 	///
 	/// - Parameter block: the block to be performed, with the main context in parameter
 	/// - Parameter save: true if the changes should be saved in privateContext
-	func doInMain(_ block: (NSManagedObjectContext) -> Void, thenSave save: Bool) {
-		doInMain(block)
+	public func doInMain(_ block: (NSManagedObjectContext) throws -> Void, thenSave save: Bool) throws {
+		try doInMain(block)
 		if save {
 			saveMainContext()
 		}
@@ -129,8 +146,8 @@ class CoreDataManager {
 	/// - Parameter block: the block to be performed, with the main context in parameter
 	/// - Parameter persist: true if the changes should be saved in private queue, and
 	/// on disk.
-	func doInMain(_ block: (NSManagedObjectContext) -> Void, thenPersist persist: Bool) {
-		doInMain(block)
+	public func doInMain(_ block: (NSManagedObjectContext) throws -> Void, thenPersist persist: Bool) throws {
+		try doInMain(block)
 		if persist {
 			saveMainContext()
 			saveOnDisk()
@@ -144,7 +161,7 @@ class CoreDataManager {
 	/// - Parameters:
 	/// - Parameter block: the block to be performed, with the main context in parameter
 	///   - then: a callback, when everything has been performed
-	func doAsync(_ block: @escaping (NSManagedObjectContext) -> Void, then: (() -> Void)?) {
+	public func doAsync(_ block: @escaping (NSManagedObjectContext) -> Void, then: (() -> Void)?) {
 		guard let mainContext = mainQueueContext else { return }
 		
 		let asyncContext = NSManagedObjectContext(concurrencyType: .privateQueueConcurrencyType)
@@ -161,7 +178,7 @@ class CoreDataManager {
 		})
 	}
 	
-	func revertUnsaved() {
+	public func revertUnsaved() {
 		guard let mainContext = mainQueueContext else { return }
 		mainContext.rollback()
 	}
