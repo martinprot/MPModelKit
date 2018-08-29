@@ -133,6 +133,17 @@ public class CoreDataManager {
 	///
 	/// - Parameter block: the block to be performed, with the main context in parameter
 	/// - Parameter save: true if the changes should be saved in privateContext
+	public func doInMain(_ block: (NSManagedObjectContext) -> Void, thenSave save: Bool) {
+		doInMain(block)
+		if save {
+			saveMainContext()
+		}
+	}
+	
+	/// Perform the given block in the main queue, then save changes into private context
+	///
+	/// - Parameter block: the block to be performed, with the main context in parameter
+	/// - Parameter save: true if the changes should be saved in privateContext
 	public func doInMain(_ block: (NSManagedObjectContext) throws -> Void, thenSave save: Bool) throws {
 		try doInMain(block)
 		if save {

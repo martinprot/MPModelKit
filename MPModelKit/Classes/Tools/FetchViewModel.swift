@@ -11,22 +11,46 @@ import Foundation
 
 open class FetchViewModel<E: NSFetchRequestResult> {
 	
-	public init() { }
+	public init(entityName: String = String(describing: E.self), predicate: NSPredicate? = .none, sort: [NSSortDescriptor]? = [], section: String? = .none) {
+		self.entityName = entityName
+		self.predicate = predicate
+		self.sortDescriptors = sort
+		self.sectionKeyPath = section
+	}
+	
+	private let entityName: String
+	
+	public var predicate: NSPredicate? {
+		didSet {
+			self.fetchedResultsController?.fetchRequest.predicate = self.predicate
+			try? self.fetchedResultsController?.performFetch()
+		}
+	}
+	
+	public var sortDescriptors: [NSSortDescriptor]? {
+		didSet {
+			self.fetchedResultsController?.fetchRequest.sortDescriptors = self.sortDescriptors
+			try? self.fetchedResultsController?.performFetch()
+		}
+	}
+	
+	/// If the list should contain sections, the object keypath to sort with
+	private let sectionKeyPath: String?
 	
 	/// The fetch request, to be implemented in subclasses
-	open var fetchRequest: NSFetchRequest<E> {
+	private var fetchRequest: NSFetchRequest<E> {
 		get {
-			return NSFetchRequest<E> ()
+			let request = NSFetchRequest<E>(entityName: self.entityName)
+			request.predicate = predicate
+			request.sortDescriptors = sortDescriptors
+			return request
 		}
 	}
 	
 	public weak var fetchedResultsDelegate: NSFetchedResultsControllerDelegate?
 	
-	/// If the list should contain sections, the object keypath to sort with
-	open var sectionKeyPath: String? { return .none }
-	
-	/// The fetchedResultsController initializer
-	private var resultControllerInitializer: NSFetchedResultsController<E>? {
+	/// the result controller, lazy var that can be reset
+	public private(set) lazy var fetchedResultsController: NSFetchedResultsController<E>? = {
 		var resultController: NSFetchedResultsController<E>? = .none
 		CoreDataManager.dataStore.doInMain { moc in
 			resultController = NSFetchedResultsController<E>(fetchRequest: self.fetchRequest, managedObjectContext: moc, sectionNameKeyPath: self.sectionKeyPath, cacheName: .none)
@@ -39,28 +63,7 @@ open class FetchViewModel<E: NSFetchRequestResult> {
 			}
 		}
 		return resultController
-	}
-	
-	private var _fetchedResultsController: NSFetchedResultsController<E>?
-	
-	
-	/// the result controller, lazy var that can be reset
-	public private(set) var fetchedResultsController: NSFetchedResultsController<E>? {
-		get {
-			if _fetchedResultsController == nil {
-				_fetchedResultsController = resultControllerInitializer
-			}
-			return _fetchedResultsController
-		}
-		set {
-			_fetchedResultsController = newValue
-		}
-	}
-	
-	/// reset the result controller
-	open func resetFetch () {
-		self.fetchedResultsController = nil
-	}
+	}()
 	
 	public var hasResults: Bool {
 		get {

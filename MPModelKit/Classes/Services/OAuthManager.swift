@@ -192,6 +192,9 @@ open class OAuthManager: NSObject {
 			else if let anonymousToken = self.anonymousToken {
 				paramsWithToken[Defaults.accessToken] = anonymousToken
 			}
+			else {
+				print("[OAuth] no token available")
+			}
 			return paramsWithToken
 		}
 		else {
