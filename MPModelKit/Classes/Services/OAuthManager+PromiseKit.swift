@@ -34,4 +34,17 @@ extension OAuthManager {
 			})
 		}
 	}
+	
+	public func authenticate(on service: String, parameters: [String: String]) -> Promise<Void> {
+		return Promise<Void> { [weak self] seal in
+			self?.authenticate(on: service, parameters: parameters, callback: { error in
+				if let error = error {
+					seal.reject(error)
+				}
+				else {
+					seal.fulfill(())
+				}
+			})
+		}
+	}
 }

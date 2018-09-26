@@ -296,8 +296,34 @@ open class OAuthManager: NSObject {
 			callback(.none)
 			
 		}, failure: { result, error, code in
-			print("Refresh token failure \(error)")
-			self.anonymousToken = .none
+			print("authentication failure \(error)")
+			callback(error)
+		})
+	}
+	
+	/// logs with a third party oauth supplier
+	///
+	/// - Parameter callback: callback when finished, with an error if so.
+	@objc public func authenticate(on service: String, parameters: [String: String], callback: @escaping (Error?)->()) {
+		let oauthRequest = OAuthAPIRequest(type: .oauthService(service: service, parameters: parameters),
+										   clientId: self.configuration.clientId,
+										   secret: self.configuration.clientSecret,
+										   endPoint: self.configuration.tokenUrl)
+		let service = BackendService()
+		service.fetch(request: oauthRequest, success: { result in
+			guard let responseObject = result as? [String: Any],
+				responseObject[Defaults.accessToken] != nil,
+				responseObject[Defaults.expirationInterval] != nil,
+				responseObject[Defaults.refreshToken] != nil
+				else {
+					callback(OAuthError.unreadableResponse)
+					return
+			}
+			self.storeToken(with: responseObject)
+			callback(.none)
+			
+		}, failure: { result, error, code in
+			print("authentication failure \(error)")
 			callback(error)
 		})
 	}
@@ -363,6 +389,7 @@ internal class OAuthAPIRequest: BackendAPIObjectRequest {
 		case authCode(code: String, redirectURI: String)
 		case credentials
 		case password(login: String, password: String)
+		case oauthService(service: String, parameters: [String: String])
 		
 		var grantType: String {
 			switch self {
@@ -374,6 +401,8 @@ internal class OAuthAPIRequest: BackendAPIObjectRequest {
 				return "client_credentials"
 			case .password:
 				return "password"
+			case .oauthService(let service, _):
+				return service
 			}
 		}
 	}
@@ -428,20 +457,11 @@ internal class OAuthAPIRequest: BackendAPIObjectRequest {
 						"grant_type" : self.type.grantType,
 						"username" : login,
 						"password" : password]
+			case .oauthService(_, let parameters):
+				return ["client_id" : self.clientId,
+						"client_secret" : self.clientSecret,
+						"grant_type" : self.type.grantType].merging(parameters) { a, b in return a }
 			}
-			
 		}
 	}
 }
-
-
-
-
-
-
-
-
-
-
-
-
