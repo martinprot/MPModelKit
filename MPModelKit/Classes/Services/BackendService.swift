@@ -10,7 +10,7 @@ import Foundation
 
 public final class BackendConfiguration {
 	
-	let baseURL: URL?
+	public let baseURL: URL?
 	
 	var apiAuthenticator: BackendAPIAuth?
 	

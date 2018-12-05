@@ -71,9 +71,37 @@ extension ArrayResponseMapper {
 		}
 		return items
 	}
-	
 }
 
+extension ArrayFlattenResponseMapper {
+	
+	static public func process(flattenOn: String? = .none, obj: Any, objectContext moc: NSManagedObjectContext, mapper: ((Any, NSManagedObjectContext) throws -> A)) throws -> [A] {
+		guard let json = obj as? [[String: Any]] else {
+			throw ResponseMapperError.invalid
+		}
+		var items = [A]()
+		try json.forEach { uniqueElementArray in
+			if let flattenOn = flattenOn {
+				guard	let jsonItem = uniqueElementArray[flattenOn]
+					else {
+						throw ResponseMapperError.invalid
+				}
+				let item = try mapper(jsonItem, moc)
+				items.append(item)
+			}
+			else {
+				guard	uniqueElementArray.count == 1,
+					let jsonItem = uniqueElementArray.values.first
+					else {
+						throw ResponseMapperError.invalid
+				}
+				let item = try mapper(jsonItem, moc)
+				items.append(item)
+			}
+		}
+		return items
+	}
+}
 
 /// Protocol to be implemented by concrete mappers
 public protocol CoreDataResponseMapperProtocol {
