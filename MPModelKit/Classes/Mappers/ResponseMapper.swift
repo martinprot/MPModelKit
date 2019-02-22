@@ -101,3 +101,4 @@ public protocol ResponseMapperProtocol {
 	@discardableResult static func process(jsonObject: Any) throws -> Item
 }
 
+public typealias ClassicResponseMapper<T: Mappable> = ResponseMapper<T> & ResponseMapperProtocol

@@ -34,7 +34,6 @@ public class CoreDataManager {
 	public func setupDatabase(modelName: String, atPath path: String? = .none) throws {
 		let documentsPath = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)[0]
 		let dbURL = URL(fileURLWithPath: documentsPath.appendingFormat("/%@", path ?? CoreDataManager.dbPath))
-		print("[CoreDataManager] created database at", dbURL.path)
 		
 		if mainQueueContext != nil {
 			return
@@ -59,6 +58,13 @@ public class CoreDataManager {
 		if !FileManager.default.fileExists(atPath: directoryURL.path) {
 			try FileManager.default.createDirectory(at: directoryURL, withIntermediateDirectories: true, attributes: .none)
 		}
+		if FileManager.default.fileExists(atPath: dbURL.path) {
+			print("[CoreDataManager] reading database from", dbURL.path)
+		}
+		else {
+			print("[CoreDataManager] created database at", dbURL.path)
+		}
+			
 		_ = try self.storeCoordinator?.addPersistentStore(ofType: NSSQLiteStoreType, configurationName: nil, at: dbURL, options: options)
 	}
 	

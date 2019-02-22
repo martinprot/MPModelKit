@@ -80,7 +80,7 @@ public class NetworkService {
 	             headers: [String: String]? = .none,
 	             success: ((Data?) -> Void)? = .none,
 				 failure: ((Data?, NetworkServiceError, Int) -> Void)? = .none) {
-		var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData, timeoutInterval: 20.0)
+		var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData, timeoutInterval: 60.0)
 		request.allHTTPHeaderFields = headers
 		request.httpMethod = method.rawValue
 		request.httpBody = body

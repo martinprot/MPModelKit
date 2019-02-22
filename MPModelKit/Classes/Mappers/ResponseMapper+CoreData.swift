@@ -134,3 +134,5 @@ public extension CoreDataResponseMapperProtocol {
 		return try process(jsonObject: jsonObject, objectContext: moc)
 	}
 }
+
+public typealias CoreDataResponseMapper<T: Mappable> = ResponseMapper<T> & CoreDataResponseMapperProtocol

@@ -14,6 +14,7 @@ public protocol OAuthConfiguration {
 	var loginPath: String { get }
 	var tokenPath: String { get }
 	var redirectUrl: String { get }
+	var method: NetworkService.Method { get }
 }
 
 extension OAuthConfiguration {
@@ -22,6 +23,9 @@ extension OAuthConfiguration {
 	}
 	var tokenUrl: URL {
 		return self.baseURL.appendingPathComponent(self.tokenPath)
+	}
+	var method: NetworkService.Method {
+		return .POST
 	}
 }
 
@@ -32,4 +36,5 @@ public struct GenericOAuthConfiguration: OAuthConfiguration {
 	public let loginPath: String
 	public let tokenPath: String
 	public let redirectUrl: String
+	public let method: NetworkService.Method
 }

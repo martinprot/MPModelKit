@@ -53,7 +53,7 @@ open class OAuthManager: NSObject {
 	}
 	
 	@objc public init(clientId: String, clientSecret: String, baseURL: URL, loginPath: String, tokenPath: String, redirectUrl: String) {
-		self.configuration = GenericOAuthConfiguration(clientId: clientId, clientSecret: clientSecret, baseURL: baseURL, loginPath: loginPath, tokenPath: tokenPath, redirectUrl: redirectUrl)
+		self.configuration = GenericOAuthConfiguration(clientId: clientId, clientSecret: clientSecret, baseURL: baseURL, loginPath: loginPath, tokenPath: tokenPath, redirectUrl: redirectUrl, method: .POST)
 	}
 	
 	////////////////////////////////////////////////////////////////////////////
@@ -234,7 +234,7 @@ open class OAuthManager: NSObject {
 				failed?(OAuthError.refreshTokenNotFound)
 				return
 		}
-		let oauthRequest = OAuthAPIRequest(type: .refreshToken(token: refreshToken, redirectURI: self.configuration.redirectUrl), clientId: self.configuration.clientId, secret: self.configuration.clientSecret, endPoint: self.configuration.tokenUrl)
+		let oauthRequest = OAuthAPIRequest(type: .refreshToken(token: refreshToken, redirectURI: self.configuration.redirectUrl), clientId: self.configuration.clientId, secret: self.configuration.clientSecret, endPoint: self.configuration.tokenUrl, method: self.configuration.method)
 		let service = BackendService()
 		service.fetch(request: oauthRequest, success: { result in
 			guard let responseObject = result as? [String: Any]
@@ -255,7 +255,7 @@ open class OAuthManager: NSObject {
 	///
 	/// - Parameter callback: callback when finished, with an error if so.
 	@objc public func getAnonymousToken(callback: @escaping (Error?)->()) {
-		let oauthRequest = OAuthAPIRequest(type: .credentials, clientId: self.configuration.clientId, secret: self.configuration.clientSecret, endPoint: self.configuration.tokenUrl)
+		let oauthRequest = OAuthAPIRequest(type: .credentials, clientId: self.configuration.clientId, secret: self.configuration.clientSecret, endPoint: self.configuration.tokenUrl, method: self.configuration.method)
 		let service = BackendService()
 		service.fetch(request: oauthRequest, success: { result in
 			guard let responseObject = result as? [String: Any],
@@ -281,7 +281,7 @@ open class OAuthManager: NSObject {
 	///
 	/// - Parameter callback: callback when finished, with an error if so.
 	@objc public func authenticate(withLogin login: String, password: String, callback: @escaping (Error?)->()) {
-		let oauthRequest = OAuthAPIRequest(type: .password(login: login, password: password), clientId: self.configuration.clientId, secret: self.configuration.clientSecret, endPoint: self.configuration.tokenUrl)
+		let oauthRequest = OAuthAPIRequest(type: .password(login: login, password: password), clientId: self.configuration.clientId, secret: self.configuration.clientSecret, endPoint: self.configuration.tokenUrl, method: self.configuration.method)
 		let service = BackendService()
 		service.fetch(request: oauthRequest, success: { result in
 			guard let responseObject = result as? [String: Any],
@@ -308,7 +308,36 @@ open class OAuthManager: NSObject {
 		let oauthRequest = OAuthAPIRequest(type: .oauthService(service: service, parameters: parameters),
 										   clientId: self.configuration.clientId,
 										   secret: self.configuration.clientSecret,
-										   endPoint: self.configuration.tokenUrl)
+										   endPoint: self.configuration.tokenUrl,
+										   method: self.configuration.method)
+		let service = BackendService()
+		service.fetch(request: oauthRequest, success: { result in
+			guard let responseObject = result as? [String: Any],
+				responseObject[Defaults.accessToken] != nil,
+				responseObject[Defaults.expirationInterval] != nil,
+				responseObject[Defaults.refreshToken] != nil
+				else {
+					callback(OAuthError.unreadableResponse)
+					return
+			}
+			self.storeToken(with: responseObject)
+			callback(.none)
+			
+		}, failure: { result, error, code in
+			print("authentication failure \(error)")
+			callback(error)
+		})
+	}
+	
+	/// logs with the code the login webview did sent by redirection
+	///
+	/// - Parameter callback: callback when finished, with an error if so.
+	public func authenticate(withRedirectCode code: String, callback: @escaping (Error?)->()) {
+		let oauthRequest = OAuthAPIRequest(type: .authCode(code: code, redirectURI: self.configuration.redirectUrl),
+										   clientId: self.configuration.clientId,
+										   secret: self.configuration.clientSecret,
+										   endPoint: self.configuration.tokenUrl,
+										   method: self.configuration.method)
 		let service = BackendService()
 		service.fetch(request: oauthRequest, success: { result in
 			guard let responseObject = result as? [String: Any],
@@ -332,7 +361,7 @@ open class OAuthManager: NSObject {
 	///
 	/// - Parameter then: the callback with the authentication result
 	public func authenticate(then: @escaping (OAuthResult)->()) {
-		if self.recoverTokenFromKeychain() {
+		if self.token != nil || self.recoverTokenFromKeychain() {
 			if self.shouldRefreshToken() {
 				print("OAuth token expired! Refreshing...")
 				self.refreshToken(success: {
@@ -411,25 +440,25 @@ internal class OAuthAPIRequest: BackendAPIObjectRequest {
 	let clientId: String
 	let clientSecret: String
 	let endPoint: URL
+	let requestMethod: NetworkService.Method
 	
-	init(type: RequestType, clientId: String, secret: String, endPoint: URL) {
+	init(type: RequestType, clientId: String, secret: String, endPoint: URL, method: NetworkService.Method) {
 		self.type = type
 		self.clientId = clientId
 		self.clientSecret = secret
 		self.endPoint = endPoint
+		self.requestMethod = method
 	}
 	
 	/// Defines the api endpoint to use
-	public var endpoint: String {
+	internal var endpoint: String {
 		get {
 			return endPoint.absoluteString
 		}
 	}
 	
 	// Define what method
-	// note: token endpoint in restful app should be POST, but it happens to find an API
-	// that looks for GET request. If so, we would pass the method by dependency injection or something.
-	public var method: NetworkService.Method { get { return .POST } }
+	public var method: NetworkService.Method { get { return self.requestMethod } }
 	
 	// The parameters to pass in
 	public var parameters: [String: Any]? {

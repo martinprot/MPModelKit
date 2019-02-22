@@ -5,20 +5,10 @@
 [![License](https://img.shields.io/cocoapods/l/MPModelKit.svg?style=flat)](http://cocoapods.org/pods/MPModelKit)
 [![Platform](https://img.shields.io/cocoapods/p/MPModelKit.svg?style=flat)](http://cocoapods.org/pods/MPModelKit)
 
-## Example
+## How to create your first request
 
-To run the example project, clone the repo, and run `pod install` from the Example directory first.
-
-## Requirements
-
-## Installation
-
-MPModelKit is available through [CocoaPods](http://cocoapods.org). To install
-it, simply add the following line to your Podfile:
-
-```ruby
-pod 'MPModelKit'
-```
+• Create a configuration to instanciate BackendService
+• Create a OAuth configuration type, which implements `OAuthConfiguration`
 
 ## Author
 
