@@ -9,7 +9,7 @@
 import Foundation
 import CoreData
 
-enum CoreDataError: Error {
+public enum CoreDataError: Error {
 	case alreadyInitialized
 	case cannotCreateModel
 }

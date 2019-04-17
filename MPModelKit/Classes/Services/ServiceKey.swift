@@ -14,7 +14,7 @@ public protocol ServiceKey {
 }
 
 public extension ServiceKey where Self: RawRepresentable {
-	public var keyName: RawValue { return rawValue }
+	var keyName: RawValue { return rawValue }
 }
 
 extension Dictionary {
