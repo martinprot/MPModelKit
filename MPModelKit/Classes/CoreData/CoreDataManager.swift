@@ -10,7 +10,7 @@ import Foundation
 import CoreData
 
 public enum CoreDataError: Error {
-	case alreadyInitialized
+	case notInitialized
 	case cannotCreateModel
 }
 
@@ -24,6 +24,17 @@ public class CoreDataManager {
 	
 	private var managedObjectModel: NSManagedObjectModel?
 	private var storeCoordinator: NSPersistentStoreCoordinator?
+	
+	internal init() {}
+	
+	/// Initializer for instance usage (vs. singleton usage)
+	///
+	/// - Parameters:
+	/// - Parameter modelName: the xcdatamodeld file, without the ".xcdatamodeld")
+	/// - 			atPath: the local path of the database, from the Documents directory
+	public init(modelName: String, atPath path: String? = .none) throws {
+		try self.setupDatabase(modelName: modelName, atPath: path)
+	}
 
 	/// Initializes the core data stack, then call the given callback
 	/// The core data stack is:
@@ -107,7 +118,7 @@ public class CoreDataManager {
 	/// Perform the given block in the main queue
 	///
 	/// - Parameter block: the block to be performed, with the main context in parameter
-	func doInMain(_ block: (NSManagedObjectContext) -> Void) {
+	public func doInMain(_ block: (NSManagedObjectContext) -> Void) {
 		guard let context = mainQueueContext else {
 			print("Data manager not initialized")
 			return
@@ -163,12 +174,64 @@ public class CoreDataManager {
 	/// - Parameter block: the block to be performed, with the main context in parameter
 	/// - Parameter persist: true if the changes should be saved in private queue, and
 	/// on disk.
+	public func doInMain(_ block: (NSManagedObjectContext) -> Void, thenPersist persist: Bool) {
+		doInMain(block)
+		if persist {
+			saveMainContext()
+			saveOnDisk()
+		}
+	}
+	
+	/// Perform the given block in the main queue, save changes into private context
+	/// then save on disk
+	///
+	/// - Parameter block: the block to be performed, with the main context in parameter
+	/// - Parameter persist: true if the changes should be saved in private queue, and
+	/// on disk.
 	public func doInMain(_ block: (NSManagedObjectContext) throws -> Void, thenPersist persist: Bool) throws {
 		try doInMain(block)
 		if persist {
 			saveMainContext()
 			saveOnDisk()
 		}
+	}
+	
+	/// Uses the doInMain pattern to return an object.
+	///
+	/// - Parameter block: the block which returns something created with context
+	/// - Returns: the requested object
+	public func getInMain<T>(_ block: (NSManagedObjectContext) -> T) -> T? {
+		guard let context = mainQueueContext else {
+			print("Data manager not initialized")
+			return nil
+		}
+		var object: T?
+		context.performAndWait({
+			object = block(context)
+		})
+		return object
+	}	
+	
+	/// Uses the doInMain pattern to return an object.
+	///
+	/// - Parameter block: the block which returns something created with context
+	/// - Returns: the requested object
+	public func getInMain<T>(_ block: (NSManagedObjectContext) throws -> T) throws -> T {
+		guard let context = mainQueueContext else {
+			print("Data manager not initialized")
+			throw CoreDataError.notInitialized
+		}
+		var object: T?
+		var thrownError: Error?
+		context.performAndWait({
+			do { object = try block(context) }
+			catch { thrownError = error }
+		})
+		if let error = thrownError {
+			throw error
+		}
+		guard let o = object else { throw CoreDataError.cannotCreateModel }
+		return o
 	}
 	
 	/// Creates a new async context, executes the bock, saves and deletes the context

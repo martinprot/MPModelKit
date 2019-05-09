@@ -17,6 +17,10 @@ public struct Paging {
 	
 	public let limit: Int
 	
+	public var offset: Int {
+		return page * limit
+	}
+	
 	public init() {
 		self.init(page: Paging.firstPage, limit: Paging.defaultPageSize)
 	}

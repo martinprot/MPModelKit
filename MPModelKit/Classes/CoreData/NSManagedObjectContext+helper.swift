@@ -71,6 +71,7 @@ extension NSManagedObjectContext {
 		let entityName = String(describing: E.self)
 		let request = NSFetchRequest<E>(entityName: entityName)
 		request.predicate = predicate(respecting: [key: value])
+		request.fetchLimit = 1
 		let objects = try? fetch(request)
 		return objects?.first
 	}

@@ -11,13 +11,15 @@ import Foundation
 
 open class FetchViewModel<E: NSFetchRequestResult> {
 	
-	public init(entityName: String = String(describing: E.self), predicate: NSPredicate? = .none, sort: [NSSortDescriptor]? = [], section: String? = .none) {
+	public init(entityName: String = String(describing: E.self), predicate: NSPredicate? = .none, sort: [NSSortDescriptor]? = [], section: String? = .none, dataStore: CoreDataManager = CoreDataManager.dataStore) {
 		self.entityName = entityName
 		self.predicate = predicate
 		self.sortDescriptors = sort
 		self.sectionKeyPath = section
+		self.dataStore = dataStore
 	}
 	
+	public let dataStore: CoreDataManager
 	private let entityName: String
 	
 	public var predicate: NSPredicate? {
@@ -52,7 +54,7 @@ open class FetchViewModel<E: NSFetchRequestResult> {
 	/// the result controller, lazy var that can be reset
 	public private(set) lazy var fetchedResultsController: NSFetchedResultsController<E>? = {
 		var resultController: NSFetchedResultsController<E>? = .none
-		CoreDataManager.dataStore.doInMain { moc in
+		self.dataStore.doInMain { moc in
 			resultController = NSFetchedResultsController<E>(fetchRequest: self.fetchRequest, managedObjectContext: moc, sectionNameKeyPath: self.sectionKeyPath, cacheName: .none)
 			resultController?.delegate = self.fetchedResultsDelegate
 			do {
