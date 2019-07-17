@@ -19,16 +19,33 @@ public protocol BackendAPIRequest {
 	// The parameters to pass in
 	var parameters: [String: Any]? { get }
 	
+	// form-data, or raw json
+	var bodyType: BodyRequestType { get }
+	
 	// Some headers
 	var headers: [String: String]? { get }
 }
 
+public enum BodyRequestType {
+	case formData
+	case rawJson
+}
+
 extension BackendAPIRequest {
 	
-	public func defaultJSONHeaders() -> [String: String] {
-		return ["Content-Type": "application/x-www-form-urlencoded"]
+	/// Default parameter type is form-data
+	public var bodyType: BodyRequestType {
+		return .formData
 	}
 	
+	public func defaultJSONHeaders() -> [String: String] {
+		switch bodyType {
+		case .formData: return ["Content-Type": "application/x-www-form-urlencoded"]
+		case .rawJson: return ["Content-Type": "application/json"]
+		}
+	}
+	
+	/// Default headers are Content-type: application/x-www-form-urlencoded
 	public var headers: [String: String]? {
 		get {
 			return defaultJSONHeaders()

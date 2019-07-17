@@ -115,6 +115,12 @@ public class CoreDataManager {
 		}
 	}
 	
+	/// Saves the main context, then persists the data on disk
+	public func saveMainContextOnDisk() {
+		self.saveMainContext()
+		self.saveOnDisk()
+	}
+	
 	/// Perform the given block in the main queue
 	///
 	/// - Parameter block: the block to be performed, with the main context in parameter
@@ -177,8 +183,7 @@ public class CoreDataManager {
 	public func doInMain(_ block: (NSManagedObjectContext) -> Void, thenPersist persist: Bool) {
 		doInMain(block)
 		if persist {
-			saveMainContext()
-			saveOnDisk()
+			saveMainContextOnDisk()
 		}
 	}
 	
@@ -191,8 +196,7 @@ public class CoreDataManager {
 	public func doInMain(_ block: (NSManagedObjectContext) throws -> Void, thenPersist persist: Bool) throws {
 		try doInMain(block)
 		if persist {
-			saveMainContext()
-			saveOnDisk()
+			saveMainContextOnDisk()
 		}
 	}
 	

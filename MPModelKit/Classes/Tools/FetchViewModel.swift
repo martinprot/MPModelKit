@@ -9,6 +9,20 @@
 import CoreData
 import Foundation
 
+public struct FetchRequestConfiguration {
+	let dataStore: CoreDataManager?
+	let predicate: NSPredicate?
+	let sortDescriptors: [NSSortDescriptor]
+	let sectionKeyPath: String?
+	
+	public init(dataStore: CoreDataManager?, predicate: NSPredicate? = .none, sortDescriptors: [NSSortDescriptor] = [], sectionKeyPath: String? = .none){
+		self.dataStore = dataStore
+		self.predicate = predicate
+		self.sortDescriptors = sortDescriptors
+		self.sectionKeyPath = sectionKeyPath
+	}
+}
+
 open class FetchViewModel<E: NSFetchRequestResult> {
 	
 	public init(entityName: String = String(describing: E.self), predicate: NSPredicate? = .none, sort: [NSSortDescriptor]? = [], section: String? = .none, dataStore: CoreDataManager = CoreDataManager.dataStore) {
@@ -17,6 +31,14 @@ open class FetchViewModel<E: NSFetchRequestResult> {
 		self.sortDescriptors = sort
 		self.sectionKeyPath = section
 		self.dataStore = dataStore
+	}
+	
+	public init(entityName: String = String(describing: E.self), fetchConfiguration: FetchRequestConfiguration) {
+		self.entityName = entityName
+		self.predicate = fetchConfiguration.predicate
+		self.sortDescriptors = fetchConfiguration.sortDescriptors
+		self.sectionKeyPath = fetchConfiguration.sectionKeyPath
+		self.dataStore = fetchConfiguration.dataStore ?? CoreDataManager.dataStore
 	}
 	
 	public let dataStore: CoreDataManager

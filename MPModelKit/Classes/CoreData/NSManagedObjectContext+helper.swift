@@ -13,18 +13,9 @@ enum ManagedObjectError: Error {
 	case wrongEntity
 }
 
-public protocol Identifiable {
-	static var objectIdKeyPath: String { get }
-	
-	var objectId: Int64 { get set }
+public protocol Identifiable: Mappable {
+	static var identifierKeyPath: String { get }
 }
-
-public extension Identifiable {
-	static var objectIdKeyPath: String {
-		return "objectId"
-	}
-}
-
 
 extension NSManagedObjectContext {
 	
@@ -112,21 +103,14 @@ extension NSManagedObjectContext {
 	// MARK: Identifiable
 	////////////////////////////////////////////////////////////////////////////
 	
-	public func newOrExistingObject<E: NSManagedObject>(identifiedBy objectId: Int64) throws -> E where E: Identifiable {
-		if let object: E = object(identifiedBy: objectId) {
-			return object
-		}
-		else {
-			var object: E = try newObject()
-			object.objectId = objectId
-			return object
-		}
+	public func newOrExistingObject<E: NSManagedObject>(identifiedBy identifier: Any) throws -> E where E: Identifiable {
+		return try newOrExistingObject(withValue: identifier, forKey: E.identifierKeyPath)
 	}
 	
-	public func object<E: NSManagedObject>(identifiedBy objectId: Int64) -> E? where E: Identifiable {
+	public func object<E: NSManagedObject>(identifiedBy identifier: Any) -> E? where E: Identifiable {
 		let entityName = String(describing: E.self)
 		let request = NSFetchRequest<E>(entityName: entityName)
-		request.predicate = predicate(respecting: [E.objectIdKeyPath: objectId])
+		request.predicate = predicate(respecting: [E.identifierKeyPath: identifier])
 		let objects = try? fetch(request)
 		return objects?.first
 	}
@@ -157,5 +141,15 @@ extension NSManagedObjectContext {
 				}
 			}
 		}
+	}
+}
+
+extension NSManagedObject {
+	
+	/// Do the given instructions with the caller, on the main thread
+	///
+	/// - Parameter block: the instruction to do
+	public func doInContext(_ block: @escaping (NSManagedObjectContext) -> Void, thenSave save: Bool = false) {
+		self.managedObjectContext?.doSync(block, thenSave: save)
 	}
 }

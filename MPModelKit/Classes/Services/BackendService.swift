@@ -74,32 +74,39 @@ public class BackendService {
 		
 		// Configure parameters
 		if let parameters = request.parameters {
-			// creating the query string
-			let getParameters = parameters.map() { (key, value) -> String in
-				if let array = value as? [Any] {
-					// for arrays, the string should be for example:
-					// order[]=intl_title&order[]=publication
-					let values = array.map() { "\(key)[]=\($0)" }
-					return values.joined(separator: "&")
+			switch request.bodyType {
+			case .formData:
+				// creating the query string
+				let getParameters = parameters.map() { (key, value) -> String in
+					if let array = value as? [Any] {
+						// for arrays, the string should be for example:
+						// order[]=intl_title&order[]=publication
+						let values = array.map() { "\(key)[]=\($0)" }
+						return values.joined(separator: "&")
+					}
+					else {
+						return "\(key)=\(value)"
+					}
 				}
-				else {
-					return "\(key)=\(value)"
-				}
-			}
-			let queryString = getParameters.joined(separator: "&")
-			
-			switch request.method {
-			case .GET, .DELETE:
-				// including GET parameters directly in URL
-				var components = URLComponents(url: url, resolvingAgainstBaseURL: true)
-				components?.query = queryString
-				completeUrl = components?.url ?? url
-				body = .none
+				let queryString = getParameters.joined(separator: "&")
 				
-			case .POST, .PUT:
-				// including parameters in body, as x-www-form-urlencoded
+				switch request.method {
+				case .GET, .DELETE:
+					// including GET parameters directly in URL
+					var components = URLComponents(url: url, resolvingAgainstBaseURL: true)
+					components?.query = queryString
+					completeUrl = components?.url ?? url
+					body = .none
+				
+				case .POST, .PUT:
+					// including parameters in body, as x-www-form-urlencoded
+					completeUrl = url
+					body = queryString.data(using: String.Encoding.utf8)
+				}
+				
+			case .rawJson:
 				completeUrl = url
-				body = queryString.data(using: String.Encoding.utf8)
+				body = try? JSONSerialization.data(withJSONObject: request.parameters ?? [:], options: [])
 			}
 		}
 		else {
