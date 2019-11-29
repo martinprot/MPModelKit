@@ -53,7 +53,7 @@ open class OAuthManager: NSObject {
 	}
 	
 	@objc public init(clientId: String, clientSecret: String, baseURL: URL, loginPath: String, tokenPath: String, redirectUrl: String) {
-		self.configuration = GenericOAuthConfiguration(clientId: clientId, clientSecret: clientSecret, baseURL: baseURL, loginPath: loginPath, tokenPath: tokenPath, redirectUrl: redirectUrl, method: .POST)
+		self.configuration = GenericOAuthConfiguration(clientId: clientId, clientSecret: clientSecret, baseURL: baseURL, loginPath: loginPath, registerPath: nil, tokenPath: tokenPath, redirectUrl: redirectUrl, method: .POST)
 	}
 	
 	////////////////////////////////////////////////////////////////////////////
@@ -81,14 +81,24 @@ open class OAuthManager: NSObject {
 	
 	/// Returns the login url to use with a webview
 	@objc public var loginURL: URL? {
+		return self.authenticationWebUrl(for: self.configuration.loginPath)
+	}
+	
+	/// Returns the register url to use with a webview
+	@objc public var registerURL: URL? {
+		guard let registerPath = self.configuration.registerPath else { return nil }
+		return self.authenticationWebUrl(for: registerPath)
+	}
+		
+	private func authenticationWebUrl(for path: String) -> URL? {
 		let encodedURLString = self.configuration.redirectUrl.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
 		
 		let loginPath: String
-		if self.configuration.loginPath.first == "/" {
-			loginPath = self.configuration.loginPath
+		if path.first == "/" {
+			loginPath = path
 		}
 		else {
-			loginPath = "/\(self.configuration.loginPath)"
+			loginPath = "/\(path)"
 		}
 		
 		var components = URLComponents()
