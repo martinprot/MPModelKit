@@ -161,7 +161,7 @@ public class BackendService {
 					return
 				}
 				if let objectKey = objectRequest.objectKey {
-					guard let objectDic = dic[objectKey] else {
+                    guard let objectDic: Any = dic.key(objectKey) else {
 						DispatchQueue.main.async {
 							failure?(.none, .unreadableResponse, 0)
 						}
@@ -197,12 +197,28 @@ public class BackendService {
 	}
 }
 
-
 /// BackendAPIAuth is used to sign the request and send the result of the signature un headers
-/// BackendAPIAuth is not vocated to handle request auth_token
+/// BackendAPIAuth can handle a OAuth bearer
 public protocol BackendAPIAuth {
 	
 	func authenticationHeader(withUrl url: URL) -> [String: String]
 	
 	func authenticationHeader(withUrl url: URL, body postData: Data?) -> [String: String]
+}
+
+public struct OAuthBearerAPIAuth: BackendAPIAuth {
+    let token: String
+    
+    public init(token: String) {
+        self.token = token
+    }
+    
+    public func authenticationHeader(withUrl url: URL) -> [String: String] {
+        ["Authorization": "Bearer \(token)"]
+    }
+    
+    public func authenticationHeader(withUrl url: URL, body postData: Data?) -> [String: String] {
+        authenticationHeader(withUrl: url)
+    }
+    
 }

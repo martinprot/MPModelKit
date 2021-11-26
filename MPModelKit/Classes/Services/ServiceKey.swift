@@ -24,7 +24,11 @@ extension Dictionary {
 	}
 	
 	public func key<Value>(_ key: ServiceKey) -> Value? {
-		let keys = key.keyName.components(separatedBy: ".")
+        self.key(key.keyName)
+    }
+    
+    public func key<Value>(_ stringKey: String) -> Value? {
+		let keys = stringKey.components(separatedBy: ".")
 		if keys.count == 1 {
 			if let k = keys[0] as? Key {
 				return self[k] as? Value

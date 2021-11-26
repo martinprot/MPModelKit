@@ -11,6 +11,7 @@ import SimpleKeychain
 
 public enum OAuthError: Error {
 	case cannotCreateOAuthUrl
+    case tokenNotFound
 	case refreshTokenNotFound
 	case unreadableResponse
 	case unknown
@@ -25,12 +26,13 @@ public extension Notification.Name {
 }
 
 public enum OAuthResult {
-	case authenticated
-	case authenticatedAnonymously
+    case authenticated(OAuthManager.Token)
+    case authenticatedAnonymously(OAuthManager.Token)
 	case notAuthenticated(Error)
 }
 
 open class OAuthManager: NSObject {
+    public typealias Token = String
 	
 	private struct KeychainDefaults {
 		static let accessToken = "auth0-user-jwt"
@@ -60,7 +62,7 @@ open class OAuthManager: NSObject {
 	// MARK: Computed properties
 	////////////////////////////////////////////////////////////////////////////
 	
-	@objc public private(set) var token: String? {
+	@objc public private(set) var token: Token? {
 		didSet {
 			let keychain = A0SimpleKeychain()
 			if let token = self.token {
@@ -73,7 +75,7 @@ open class OAuthManager: NSObject {
 		}
 	}
 	
-	@objc public private(set) var anonymousToken: String?
+	@objc public private(set) var anonymousToken: Token?
 	
 	@objc public var isAuthenticated: Bool {
 		return self.token != nil
@@ -164,8 +166,8 @@ open class OAuthManager: NSObject {
 	/// Stores the token, anonymous token and the token expiration date
 	///
 	/// - Parameter parameters: a dictionary conaining part of the 3 above objects
-	internal func storeToken(with parameters: [String: Any]) {
-		guard let token = parameters[Defaults.accessToken] as? String else { return }
+	internal func storeToken(with parameters: [String: Any]) -> Token? {
+		guard let token = parameters[Defaults.accessToken] as? Token else { return nil }
 		self.token = token
 		let keychain = A0SimpleKeychain()
 		if let refreshToken = parameters[Defaults.refreshToken] as? String {
@@ -178,13 +180,14 @@ open class OAuthManager: NSObject {
 			UserDefaults.standard.synchronize()
 		}
 		NotificationCenter.default.post(name: .authenticationDidChange, object: nil, userInfo: [Defaults.accessToken: token])
+        return token
 	}
 	
 	/// Log user out by deleting its token
 	@objc public func disconnect() {
 		self.token = .none
 		
-		self.getAnonymousToken { _ in
+		self.getAnonymousToken { _, _ in
 			NotificationCenter.default.post(name: .authenticationDidChange, object: nil)
 		}
 	}
@@ -228,7 +231,7 @@ open class OAuthManager: NSObject {
 	// MARK: Endpoints
 	////////////////////////////////////////////////////////////////////////////
 	
-	@objc public func refreshToken(success: @escaping ()->()) {
+	@objc public func refreshToken(success: @escaping (Token)->()) {
 		self.refreshToken(success: success, failed: nil)
 	}
 	
@@ -237,7 +240,7 @@ open class OAuthManager: NSObject {
 	/// - Parameters:
 	///   - success: callback if succeed
 	///   - failed: callback if failed, with the error
-	@objc public func refreshToken(success: @escaping ()->(), failed: ((Error)->())? = .none) {
+	@objc public func refreshToken(success: @escaping (Token)->(), failed: ((Error)->())? = .none) {
 		let keychain = A0SimpleKeychain()
 		guard let refreshToken = keychain.string(forKey: KeychainDefaults.refreshToken)
 			else {
@@ -252,8 +255,11 @@ open class OAuthManager: NSObject {
 					failed?(OAuthError.unreadableResponse)
 					return
 			}
-			self.storeToken(with: responseObject)
-			success()
+            guard let token = self.storeToken(with: responseObject) else {
+                failed?(OAuthError.tokenNotFound)
+                return
+            }
+			success(token)
 			
 		}, failure: { result, error, code in
 			self.token = .none
@@ -264,26 +270,26 @@ open class OAuthManager: NSObject {
 	/// Refreshes the anonymous token
 	///
 	/// - Parameter callback: callback when finished, with an error if so.
-	@objc public func getAnonymousToken(callback: @escaping (Error?)->()) {
+	@objc public func getAnonymousToken(callback: @escaping (Token?, Error?)->()) {
 		let oauthRequest = OAuthAPIRequest(type: .credentials, clientId: self.configuration.clientId, secret: self.configuration.clientSecret, endPoint: self.configuration.tokenUrl, method: self.configuration.method)
 		let service = BackendService()
 		service.fetch(request: oauthRequest, success: { result in
 			guard let responseObject = result as? [String: Any],
-				let anonymousToken = responseObject[Defaults.accessToken] as? String,
+				let anonymousToken = responseObject[Defaults.accessToken] as? Token,
 				let expirationInterval = responseObject[Defaults.expirationInterval] as? TimeInterval
 				else {
-					callback(OAuthError.unreadableResponse)
+					callback(nil, OAuthError.unreadableResponse)
 					return
 			}
 			self.anonymousToken = anonymousToken
 			let date = Date(timeIntervalSinceNow: expirationInterval)
 			UserDefaults.standard.setValue(date, forKey: KeychainDefaults.anonymousExpirationDate)
-			callback(.none)
+			callback(anonymousToken, .none)
 			
 		}, failure: { result, error, code in
 			print("Refresh token failure \(error)")
 			self.anonymousToken = .none
-			callback(error)
+            callback(nil, error)
 		})
 	}
 	
@@ -302,7 +308,7 @@ open class OAuthManager: NSObject {
 					callback(OAuthError.unreadableResponse)
 					return
 			}
-			self.storeToken(with: responseObject)
+			_ = self.storeToken(with: responseObject)
 			callback(.none)
 			
 		}, failure: { result, error, code in
@@ -330,7 +336,7 @@ open class OAuthManager: NSObject {
 					callback(OAuthError.unreadableResponse)
 					return
 			}
-			self.storeToken(with: responseObject)
+			_ = self.storeToken(with: responseObject)
 			callback(.none)
 			
 		}, failure: { result, error, code in
@@ -342,7 +348,7 @@ open class OAuthManager: NSObject {
 	/// logs with the code the login webview did sent by redirection
 	///
 	/// - Parameter callback: callback when finished, with an error if so.
-	public func authenticate(withRedirectCode code: String, callback: @escaping (Error?)->()) {
+	public func authenticate(withRedirectCode code: String, callback: @escaping (Result<Token, OAuthError>)->()) {
 		let oauthRequest = OAuthAPIRequest(type: .authCode(code: code, redirectURI: self.configuration.redirectUrl),
 										   clientId: self.configuration.clientId,
 										   secret: self.configuration.clientSecret,
@@ -355,15 +361,18 @@ open class OAuthManager: NSObject {
 				responseObject[Defaults.expirationInterval] != nil,
 				responseObject[Defaults.refreshToken] != nil
 				else {
-					callback(OAuthError.unreadableResponse)
+                    callback(.failure(.unreadableResponse))
 					return
 			}
-			self.storeToken(with: responseObject)
-			callback(.none)
+            guard let token = self.storeToken(with: responseObject) else {
+                callback(.failure(.tokenNotFound))
+                return
+            }
+            callback(.success(token))
 			
 		}, failure: { result, error, code in
 			print("authentication failure \(error)")
-			callback(error)
+            callback(.failure(.unknown))
 		})
 	}
 	
@@ -374,44 +383,49 @@ open class OAuthManager: NSObject {
 		if self.token != nil || self.recoverTokenFromKeychain() {
 			if self.shouldRefreshToken() {
 				print("OAuth token expired! Refreshing...")
-				self.refreshToken(success: {
+				self.refreshToken(success: { token in
 					// authenticated
-					then(.authenticated)
+					then(.authenticated(token))
 					print("OAuth Refresh token success")
 				}, failed: { error in
 					print("OAuth Refresh token failure: \(error)")
-					self.getAnonymousToken(callback: { error in
+					self.getAnonymousToken(callback: { token, error in
 						if let error = error {
 							print("Cannot get anonymous token: \(error)")
 							// not authenticated
 							then(.notAuthenticated(error))
-						}
-						else {
+						} else if let token = token {
 							// authenticated anonymously
-							then(.authenticatedAnonymously)
-						}
+							then(.authenticatedAnonymously(token))
+                        } else {
+                            then(.notAuthenticated(OAuthError.unknown))
+                        }
 					})
 				})
 			}
-			else {
+            else if let token = self.token {
 				// (already) authenticated
 				print("OAuth token still valid")
-				then(.authenticated)
+				then(.authenticated(token))
 			}
+            else {
+                then(.notAuthenticated(OAuthError.tokenNotFound))
+            }
 		}
 		else {
 			// Not authenticated
 			print("OAuth: not connected")
-			self.getAnonymousToken(callback: { error in
+			self.getAnonymousToken(callback: { token, error in
 				if let error = error {
 					print("Cannot get anonymous token: \(error)")
 					// not authenticated
 					then(.notAuthenticated(error))
-				}
-				else {
-					// authenticated anonymously
-					then(.authenticatedAnonymously)
-				}
+				} else if let token = token {
+                    // authenticated anonymously
+                    then(.authenticatedAnonymously(token))
+                } else {
+                    then(.notAuthenticated(OAuthError.unknown))
+                }
 			})
 		}
 	}

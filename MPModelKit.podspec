@@ -8,7 +8,7 @@
 
 Pod::Spec.new do |s|
   s.name             = 'MPModelKit'
-  s.version          = '0.1.0'
+  s.version          = '1.2.0'
   s.summary          = 'A lightweight toolkit that handle webservices and CoreData mapping'
   s.swift_version	 = '5'
 
